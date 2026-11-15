@@ -8,6 +8,21 @@ from app.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
+DEFAULT_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
+
+
+async def apply_schema_and_migrations(conn: Any, schema_path: Path = DEFAULT_SCHEMA_PATH) -> None:
+    """Apply schema.sql and then every migrations/*.sql in filename order.
+
+    Both are idempotent, so this is safe on every startup and before seeding,
+    and fresh Docker installs and existing databases converge equally.
+    """
+    await conn.execute(schema_path.read_text(encoding="utf-8"))
+    migrations_dir = schema_path.parent / "migrations"
+    if migrations_dir.is_dir():
+        for migration_path in sorted(migrations_dir.glob("*.sql")):
+            await conn.execute(migration_path.read_text(encoding="utf-8"))
+
 
 class Database:
     """PostgreSQL database manager using an asyncpg connection pool."""
@@ -54,25 +69,15 @@ class Database:
         if not self.pool:
             return False
 
-        if schema_path is None:
-            target_path = Path(__file__).resolve().parent.parent / "schema.sql"
-        else:
-            target_path = Path(schema_path)
+        target_path = DEFAULT_SCHEMA_PATH if schema_path is None else Path(schema_path)
 
         if not target_path.exists():
             logger.warning("schema.sql not found at %s", target_path)
             return False
 
         try:
-            sql = target_path.read_text(encoding="utf-8")
             async with self.pool.acquire() as conn:
-                await conn.execute(sql)
-                # Apply checked-in, idempotent migrations after the base schema so
-                # fresh Docker installs and existing databases converge equally.
-                migrations_dir = target_path.parent / "migrations"
-                if migrations_dir.is_dir():
-                    for migration_path in sorted(migrations_dir.glob("*.sql")):
-                        await conn.execute(migration_path.read_text(encoding="utf-8"))
+                await apply_schema_and_migrations(conn, target_path)
             logger.info("Database schema applied successfully from %s.", target_path.name)
             return True
         except Exception as exc:

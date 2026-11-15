@@ -25,7 +25,8 @@ async def is_confirmed_group_member(
     user_role: str,
     db: Database,
 ) -> bool:
-    """Check if the user is a confirmed member or organizer of the group, or an admin."""
+    """Check if the user is a confirmed member, the organizer, the owner of the
+    underlying trip, or an admin."""
     if user_role == "ADMIN":
         return True
     try:
@@ -37,6 +38,8 @@ async def is_confirmed_group_member(
     query = """
         SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2
         UNION SELECT 1 FROM groups WHERE id = $1 AND organizer_id = $2
+        UNION SELECT 1 FROM groups g JOIN trips t ON t.id = g.trip_id
+              WHERE g.id = $1 AND t.creator_id = $2
         LIMIT 1
     """
     row = await db.fetchrow(query, g_uuid, u_uuid)

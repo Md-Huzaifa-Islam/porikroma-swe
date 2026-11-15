@@ -9,6 +9,8 @@ import asyncpg
 import bcrypt
 from dotenv import load_dotenv
 
+from app.db import apply_schema_and_migrations
+
 # Load Backend/.env if present
 env_path = Path(__file__).resolve().parent / ".env"
 if env_path.exists():
@@ -33,6 +35,10 @@ async def seed(database_url: str = DATABASE_URL) -> None:
     conn = await asyncpg.connect(database_url)
 
     try:
+        # Make sure the schema and all migrations exist before inserting data,
+        # since the seed can run before the API has ever started.
+        await apply_schema_and_migrations(conn)
+
         # 1. Password hash for password123
         password_hash = bcrypt.hashpw(b"password123", bcrypt.gensalt(10)).decode("utf-8")
 

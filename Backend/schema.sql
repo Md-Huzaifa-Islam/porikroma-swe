@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS trips (
   visibility text NOT NULL DEFAULT 'PRIVATE' CHECK (visibility IN ('PUBLIC', 'PRIVATE')),
   budget integer NOT NULL DEFAULT 0 CHECK (budget >= 0),
   description text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(),
   CHECK (end_date >= start_date)
 );
 

@@ -58,8 +58,11 @@ def test_init_schema_applies_schema_sql_idempotently():
 
         success = await test_db.init_schema()
         assert success is True
-        # Base schema plus the four idempotent checked-in migrations.
-        assert mock_conn.execute.await_count == 5
+        # Base schema plus every idempotent checked-in migration, in order.
+        migrations = sorted((Path(__file__).resolve().parents[1] / "migrations").glob("*.sql"))
+        assert mock_conn.execute.await_count == 1 + len(migrations)
+        applied = [c.args[0] for c in mock_conn.execute.await_args_list[1:]]
+        assert applied == [m.read_text(encoding="utf-8") for m in migrations]
 
         executed_sql = mock_conn.execute.await_args_list[0].args[0]
         assert "CREATE TABLE IF NOT EXISTS users" in executed_sql
