@@ -300,7 +300,8 @@ def test_get_and_update_profile(client: TestClient):
     }
 
     with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow, \
-         patch.object(db, "execute", new_callable=AsyncMock) as mock_execute:
+         patch.object(db, "execute", new_callable=AsyncMock) as mock_execute, \
+         patch.object(db, "fetch", new_callable=AsyncMock, return_value=[]):
         # 1. GET /api/me/profile
         mock_fetchrow.return_value = profile_row
         get_res = client.get("/api/me/profile", headers={"Authorization": f"Bearer {token}"})

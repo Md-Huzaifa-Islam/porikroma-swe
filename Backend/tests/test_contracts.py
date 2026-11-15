@@ -113,7 +113,8 @@ def test_contract_users_router(client: TestClient):
         "footprint_visible": True,
         "reviews_visible": True,
     }
-    with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow:
+    with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow, \
+         patch.object(db, "fetch", new_callable=AsyncMock, return_value=[]):
         def fetchrow_side_effect(query, *args):
             if "FROM users u" in query and "user_profiles" in query:
                 return profile_row

@@ -423,7 +423,8 @@ def test_trip_member_invitation_flow(client: TestClient):
 def test_trip_status_transition(client: TestClient):
     auth_header = make_auth_header(USER_1_ID, "traveler1@test.com", "TRAVELER")
 
-    with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow:
+    with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow, \
+         patch.object(db, "execute", new_callable=AsyncMock) as mock_execute:
         mock_fetchrow.side_effect = [
             MOCK_USER_1,
             {**MOCK_TRIP, "status": "COMPLETED"},
@@ -435,6 +436,9 @@ def test_trip_status_transition(client: TestClient):
         )
         assert res.status_code == 200
         assert res.json()["status"] == "COMPLETED"
+        # Completing a trip stamps the destination into participants' passports
+        mock_execute.assert_awaited_once()
+        assert "INSERT INTO passport_entries" in mock_execute.await_args.args[0]
 
     # Non-owner / unauthorized returns 404
     with patch.object(db, "fetchrow", new_callable=AsyncMock) as mock_fetchrow:
