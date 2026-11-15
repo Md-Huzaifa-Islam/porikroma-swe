@@ -1,0 +1,69 @@
+# Production deployment: PostgreSQL + FastAPI + nginx serving the built frontend.
+#
+#   cp .env.example .env      # then set POSTGRES_PASSWORD and JWT_SECRET
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# The app is served on http://<host>:${WEB_PORT:-8080}. nginx proxies /api to the
+# backend, so only the web port is published.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-porikroma}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-porikroma}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./Backend
+    restart: unless-stopped
+    # The API applies schema.sql and migrations on startup; demo data is optional.
+    command: >
+      sh -c 'if [ "$${SEED_DEMO_DATA}" = "true" ]; then python seed.py; fi &&
+             exec uvicorn app.main:app --host 0.0.0.0 --port 4000 --proxy-headers --forwarded-allow-ips="*"'
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-porikroma}
+      PORT: "4000"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Porikroma <notifications@porikroma.com>}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/api/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./Frontend
+      target: prod
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata_prod:

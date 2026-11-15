@@ -1,4 +1,6 @@
-export const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000'
+// Unset -> local dev API. An empty string means same-origin requests
+// (the production image serves the app and proxies /api through nginx).
+export const API_URL = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:4000'
 
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('porikroma-token')

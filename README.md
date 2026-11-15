@@ -67,6 +67,20 @@ Compose starts PostgreSQL, the FastAPI API, and the Vite development server. The
 
 Stop the services with `Ctrl+C`. To stop and remove the database volume too, use `docker compose down -v`; this deletes local database data.
 
+## Deploy with Docker (production)
+
+`docker-compose.prod.yml` builds the frontend into static files served by nginx, runs the API without hot reload, and keeps PostgreSQL and the API on the internal Docker network. nginx proxies `/api` and `/docs` to the API, so only one port is published.
+
+```bash
+cp .env.example .env    # set POSTGRES_PASSWORD and JWT_SECRET (openssl rand -hex 32)
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- App: <http://localhost:8080> (change with `WEB_PORT`)
+- API docs: <http://localhost:8080/docs>
+
+The API applies the schema and migrations on startup. Set `SEED_DEMO_DATA=true` in `.env` to load the demo accounts below; keep it `false` for a real deployment. Stop with `docker compose -f docker-compose.prod.yml down`.
+
 ## Run locally
 
 Requirements: Python 3.12+, Node.js 20+, npm, and PostgreSQL 16+.

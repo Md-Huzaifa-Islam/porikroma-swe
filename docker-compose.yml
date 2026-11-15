@@ -43,6 +43,7 @@ services:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: porikroma-frontend
     restart: unless-stopped
     environment:
