@@ -1,16 +1,16 @@
-import { useMemo, useState, useEffect } from "react"
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from "react-leaflet"
-import { Plus, MapPin, Trash2, X, Compass, Layers } from "lucide-react"
-import { api } from "../../api"
-import type { WorkspaceData } from "../../types"
-import { L, createPlaceIcon, createItineraryStopIcon } from "../../utils/leafletSetup"
-import { getDestinationCenter, DESTINATION_COORDINATES } from "../../data/bangladeshDistricts"
+import { useMemo, useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
+import { Plus, MapPin, Trash2, X, Navigation, Compass, Layers } from 'lucide-react'
+import { api } from '../../api'
+import type { WorkspaceData } from '../../types'
+import { L, createPlaceIcon, createItineraryStopIcon } from '../../utils/leafletSetup'
+import { getDestinationCenter, DESTINATION_COORDINATES } from '../../data/bangladeshDistricts'
 
 export interface MapTabProps {
   tripId: string
   destinationName: string
-  places: WorkspaceData["mapPlaces"]
-  itinerary?: WorkspaceData["itinerary"]
+  places: WorkspaceData['mapPlaces']
+  itinerary?: WorkspaceData['itinerary']
   onRefresh: () => void
 }
 
@@ -30,10 +30,10 @@ function MapResizer() {
       map.invalidateSize()
     }, 250)
     const handleResize = () => map.invalidateSize()
-    window.addEventListener("resize", handleResize)
+    window.addEventListener('resize', handleResize)
     return () => {
       clearTimeout(timer)
-      window.removeEventListener("resize", handleResize)
+      window.removeEventListener('resize', handleResize)
     }
   }, [map])
   return null
@@ -55,21 +55,21 @@ function MapBoundsController({ points }: { points: [number, number][] }) {
 
 export function MapTab({ tripId, destinationName, places, itinerary = [], onRefresh }: MapTabProps) {
   const [showModal, setShowModal] = useState(false)
-  const [name, setName] = useState("")
-  const [category, setCategory] = useState("Attraction")
-  const [notes, setNotes] = useState("")
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState('Attraction')
+  const [notes, setNotes] = useState('')
   const [clickedLat, setClickedLat] = useState<number | null>(null)
   const [clickedLng, setClickedLng] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
-  const [actionError, setActionError] = useState("")
+  const [actionError, setActionError] = useState('')
 
   const destCenter = useMemo(() => getDestinationCenter(destinationName), [destinationName])
 
   // Resolve coordinates for each place (with deterministic jitter if missing)
   const resolvedPlaces = useMemo(() => {
     return places.map((p, idx) => {
-      const lat = typeof p.lat === "number" && !isNaN(p.lat) ? p.lat : destCenter[0] + (idx + 1) * 0.008 * Math.cos(idx * 1.5)
-      const lng = typeof p.lng === "number" && !isNaN(p.lng) ? p.lng : destCenter[1] + (idx + 1) * 0.008 * Math.sin(idx * 1.5)
+      const lat = typeof p.lat === 'number' && !isNaN(p.lat) ? p.lat : destCenter[0] + (idx + 1) * 0.008 * Math.cos(idx * 1.5)
+      const lng = typeof p.lng === 'number' && !isNaN(p.lng) ? p.lng : destCenter[1] + (idx + 1) * 0.008 * Math.sin(idx * 1.5)
       return { ...p, lat, lng }
     })
   }, [places, destCenter])
@@ -85,7 +85,7 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
   const itineraryWaypoints = useMemo(() => {
     return sortedItinerary.map((item, idx) => {
       // 1. Direct coordinates if present
-      if (typeof item.lat === "number" && typeof item.lng === "number") {
+      if (typeof item.lat === 'number' && typeof item.lng === 'number') {
         return { item, coord: [item.lat, item.lng] as [number, number] }
       }
       // 2. Match with saved places
@@ -125,30 +125,30 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
   const handleMapClick = (lat: number, lng: number) => {
     setClickedLat(lat)
     setClickedLng(lng)
-    setName("")
-    setNotes("")
-    setCategory("Attraction")
-    setActionError("")
+    setName('')
+    setNotes('')
+    setCategory('Attraction')
+    setActionError('')
     setShowModal(true)
   }
 
   const handleOpenAddModal = () => {
     setClickedLat(destCenter[0])
     setClickedLng(destCenter[1])
-    setName("")
-    setNotes("")
-    setCategory("Attraction")
-    setActionError("")
+    setName('')
+    setNotes('')
+    setCategory('Attraction')
+    setActionError('')
     setShowModal(true)
   }
 
   const handleSavePlace = async () => {
     if (!name.trim()) return
     setSaving(true)
-    setActionError("")
+    setActionError('')
     try {
       await api(`/api/trips/${tripId}/map-places`, {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
           category,
@@ -158,11 +158,11 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
         }),
       })
       setShowModal(false)
-      setName("")
-      setNotes("")
+      setName('')
+      setNotes('')
       onRefresh()
     } catch (err: any) {
-      setActionError(err?.message || "Failed to save place")
+      setActionError(err?.message || 'Failed to save place')
     } finally {
       setSaving(false)
     }
@@ -170,10 +170,10 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
 
   const handleDeletePlace = async (id: string) => {
     try {
-      await api(`/api/trips/${tripId}/map-places/${id}`, { method: "DELETE" })
+      await api(`/api/trips/${tripId}/map-places/${id}`, { method: 'DELETE' })
       onRefresh()
     } catch (err: any) {
-      alert(err?.message || "Failed to delete place")
+      alert(err?.message || 'Failed to delete place')
     }
   }
 
@@ -187,25 +187,37 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
             {itineraryWaypoints.length > 0 && ` · ${itineraryWaypoints.length} itinerary stops connected`}
           </p>
         </div>
-        <div className="map-tab-heading-actions">
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button className="primary-btn" onClick={handleOpenAddModal}>
-            <Plus size={15} /> Add place
+            <Plus size={17} /> Add place
           </button>
         </div>
       </div>
 
-      <div className="map-tab-hint">
-        <Compass size={14} className="map-tab-hint-icon" />
+      <div style={{ margin: '8px 0 12px', fontSize: '13px', color: '#556557', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Compass size={16} color="#15803d" />
         <span>Click anywhere on the map to pin a new place, or click existing markers to view details.</span>
       </div>
 
       {/* Real Interactive Leaflet Map */}
-      <div className="porikroma-map-container">
+      <div
+        className="porikroma-map-container"
+        style={{
+          height: '420px',
+          width: '100%',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          position: 'relative',
+          margin: '12px 0 24px',
+          border: '1px solid #c8d7c4',
+          zIndex: 0,
+        }}
+      >
         <MapContainer
           center={destCenter}
           zoom={12}
           scrollWheelZoom={true}
-          className="map-tab-leaflet-map"
+          style={{ height: '100%', width: '100%' }}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -221,10 +233,10 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
             <Polyline
               positions={polylineCoords}
               pathOptions={{
-                color: "#283130",
-                weight: 3,
-                opacity: 0.9,
-                dashArray: "6, 8",
+                color: '#15803d',
+                weight: 4,
+                opacity: 0.85,
+                dashArray: '6, 8',
               }}
             />
           )}
@@ -237,20 +249,20 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
               icon={createItineraryStopIcon(idx + 1)}
             >
               <Popup>
-                <div className="map-tab-popup">
-                  <div className="map-tab-popup-header">
-                    <span className="map-tab-popup-stop">
+                <div style={{ minWidth: '180px', fontFamily: 'inherit' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <span style={{ background: '#1e3a2b', color: '#fff', fontSize: '11px', padding: '2px 7px', borderRadius: '4px', fontWeight: 'bold' }}>
                       Stop #{idx + 1}
                     </span>
-                    <small className="map-tab-popup-date">{w.item.day_date}</small>
+                    <small style={{ color: '#506155', fontSize: '12px' }}>{w.item.day_date}</small>
                   </div>
-                  <strong className="map-tab-popup-title">{w.item.title}</strong>
+                  <strong style={{ fontSize: '13.5px', display: 'block', color: '#1a3324' }}>{w.item.title}</strong>
                   {w.item.location && (
-                    <p className="map-tab-popup-loc">
-                      <MapPin size={11} /> {w.item.location}
+                    <p style={{ fontSize: '12px', color: '#4d5d52', margin: '3px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={13} /> {w.item.location}
                     </p>
                   )}
-                  {w.item.notes && <p className="map-tab-popup-notes">{w.item.notes}</p>}
+                  {w.item.notes && <p style={{ fontSize: '12px', color: '#506155', margin: '4px 0 0' }}>{w.item.notes}</p>}
                 </div>
               </Popup>
             </Marker>
@@ -264,18 +276,30 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
               icon={createPlaceIcon(p.category, p.name)}
             >
               <Popup>
-                <div className="map-tab-popup">
-                  <span className="badge badge-green">{p.category}</span>
-                  <strong className="map-tab-place-name">{p.name}</strong>
-                  {p.notes && <p className="map-tab-popup-notes">{p.notes}</p>}
-                  <div className="map-tab-popup-coords">
+                <div style={{ minWidth: '190px', fontFamily: 'inherit' }}>
+                  <span className="badge badge-green" style={{ fontSize: '11px', padding: '2px 7px' }}>{p.category}</span>
+                  <strong style={{ display: 'block', fontSize: '13.5px', margin: '4px 0 2px', color: '#1a3324' }}>{p.name}</strong>
+                  {p.notes && <p style={{ fontSize: '12px', color: '#4d5d52', margin: '2px 0 8px' }}>{p.notes}</p>}
+                  <div style={{ fontSize: '12px', color: '#506155', margin: '4px 0' }}>
                     Lat: {p.lat.toFixed(4)}, Lng: {p.lng.toFixed(4)}
                   </div>
                   <button
                     onClick={() => handleDeletePlace(p.id)}
-                    className="map-tab-popup-delete"
+                    style={{
+                      background: '#fee2e2',
+                      color: '#b91c1c',
+                      border: 'none',
+                      padding: '5px 9px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '6px',
+                    }}
                   >
-                    <Trash2 size={12} /> Remove place
+                    <Trash2 size={14} /> Remove place
                   </button>
                 </div>
               </Popup>
@@ -285,44 +309,44 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
       </div>
 
       {/* Legend & Summary */}
-      <div className="map-tab-legend">
-        <div className="map-tab-legend-item">
-          <span className="map-tab-legend-dot" />
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px', background: '#f4f7f2', borderRadius: '8px', fontSize: '12px', color: '#445547' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
           <span>Saved Places ({resolvedPlaces.length})</span>
         </div>
         {itineraryWaypoints.length > 0 && (
-          <div className="map-tab-legend-item">
-            <span className="map-tab-legend-line" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '16px', height: '3px', background: '#15803d', display: 'inline-block', borderStyle: 'dashed' }} />
             <span>Itinerary Route ({itineraryWaypoints.length} stops)</span>
           </div>
         )}
-        <div className="map-tab-legend-attr">
+        <div style={{ marginLeft: 'auto', color: '#506155', fontSize: '12px' }}>
           Powered by OpenStreetMap
         </div>
       </div>
 
       {/* Saved Places List */}
-      <div className="map-tab-places-list">
-        <h3 className="map-tab-places-heading">
-          <Layers size={16} /> Saved Points of Interest
+      <div style={{ marginTop: '24px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#2d4b3b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Layers size={18} /> Saved Points of Interest
         </h3>
         {resolvedPlaces.length === 0 ? (
-          <p className="map-tab-empty-text">
+          <p className="muted" style={{ fontSize: '13.5px', padding: '16px 0' }}>
             No custom places pinned yet. Click on the map or the &ldquo;Add place&rdquo; button above to pin beaches, tea stalls, viewpoints, or dining spots.
           </p>
         ) : (
           resolvedPlaces.map((p) => (
-            <div className="attraction-row map-tab-place-row" key={p.id}>
+            <div className="attraction-row" key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <span className="badge badge-green">{p.category}</span>
-                <strong className="map-tab-place-name">{p.name}</strong>
-                {p.notes && <p className="map-tab-place-notes">{p.notes}</p>}
-                <small className="map-tab-place-coords">
+                <strong style={{ fontSize: '14.5px', margin: '4px 0' }}>{p.name}</strong>
+                {p.notes && <p style={{ fontSize: '13px', color: '#506155', margin: 0 }}>{p.notes}</p>}
+                <small style={{ fontSize: '12px', color: '#506155' }}>
                   ({p.lat.toFixed(4)}, {p.lng.toFixed(4)})
                 </small>
               </div>
-              <button className="icon-btn" onClick={() => handleDeletePlace(p.id)} title="Delete place">
-                <Trash2 size={14} />
+              <button className="icon-btn" onClick={() => handleDeletePlace(p.id)} title="Delete place" aria-label="Delete place">
+                <Trash2 size={16} />
               </button>
             </div>
           ))
@@ -333,18 +357,18 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowModal(false)}>
+            <button className="modal-close" onClick={() => setShowModal(false)} aria-label="Close pin place modal">
               <X size={18} />
             </button>
             <h2>Pin a place of interest</h2>
-            <p className="map-tab-modal-coords">
+            <p style={{ fontSize: '13.5px', color: '#4e5e52', margin: '2px 0 16px', lineHeight: 1.5 }}>
               {clickedLat && clickedLng
                 ? `Pinned at coordinates: ${clickedLat.toFixed(4)}, ${clickedLng.toFixed(4)}`
                 : `Adding to ${destinationName}`}
             </p>
 
             {actionError && (
-              <p className="error-box">
+              <p style={{ color: '#dc2626', fontSize: '13.5px', background: '#fee2e2', padding: '8px 12px', borderRadius: '6px' }}>
                 {actionError}
               </p>
             )}
@@ -383,7 +407,7 @@ export function MapTab({ tripId, destinationName, places, itinerary = [], onRefr
                 Cancel
               </button>
               <button className="primary-btn" onClick={handleSavePlace} disabled={saving || !name.trim()}>
-                {saving ? "Saving…" : "Save place"}
+                {saving ? 'Saving…' : 'Save place'}
               </button>
             </div>
           </div>

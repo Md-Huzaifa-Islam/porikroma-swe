@@ -51,13 +51,26 @@ export function WeatherWidget({
   // Quiet fallback when the weather API fails or is unreachable
   if (failed) {
     return (
-      <div className={`weather-quiet-fallback ${className}`}>
-        <CloudSun size={18} className="weather-icon-primary" />
+      <div
+        className={`weather-quiet-fallback ${className}`}
+        style={{
+          padding: '12px 14px',
+          background: '#f8faf6',
+          borderRadius: '10px',
+          border: '1px solid #e2ece0',
+          fontSize: '13px',
+          color: '#5a685e',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      >
+        <CloudSun size={18} color="#506155" />
         <div>
-          <span className="weather-fallback-title">
+          <span style={{ fontWeight: 600, color: '#3d4d42', display: 'block' }}>
             Weather forecast unavailable
           </span>
-          <span className="weather-fallback-desc">
+          <span style={{ fontSize: '12.5px', color: '#5a685e' }}>
             Live weather could not be retrieved for {destinationName || 'this destination'}.
           </span>
         </div>
@@ -67,8 +80,18 @@ export function WeatherWidget({
 
   if (loading && !data) {
     return (
-      <div className={`weather-loading-box ${className}`}>
-        <p className="weather-loading-text">Checking regional weather forecast…</p>
+      <div
+        className={`weather-loading-box ${className}`}
+        style={{
+          padding: '14px',
+          background: '#f8faf6',
+          borderRadius: '10px',
+          border: '1px solid #e2ece0',
+          fontSize: '13.5px',
+          color: '#5a685e',
+        }}
+      >
+        <p style={{ margin: 0 }}>Checking regional weather forecast…</p>
       </div>
     )
   }
@@ -79,125 +102,219 @@ export function WeatherWidget({
 
   if (compact) {
     return (
-      <div className={`weather-widget-compact ${className}`}>
+      <div
+        className={`weather-widget-compact ${className}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '8px 12px',
+          background: 'rgba(255, 255, 255, 0.85)',
+          borderRadius: '8px',
+          border: '1px solid #dbe6d9',
+          fontSize: '13px',
+        }}
+      >
         {current.icon ? (
           <img
             src={`https://openweathermap.org/img/wn/${current.icon}.png`}
             alt={current.description}
-            className="weather-compact-img"
+            style={{ width: '32px', height: '32px' }}
             onError={(e) => {
               ;(e.target as HTMLElement).style.display = 'none'
             }}
           />
         ) : (
-          <CloudSun size={18} className="weather-icon-primary" />
+          <CloudSun size={18} color="#15803d" />
         )}
-        <div className="weather-compact-info">
-          <strong className="weather-temp-number">
+        <div>
+          <strong style={{ fontSize: '14px', color: '#1a3324' }}>
             {Math.round(current.temp)}°C
           </strong>{' '}
-          <span className="weather-compact-desc">· {current.description}</span>
+          <span style={{ color: '#4e5e52' }}>· {current.description}</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`weather-widget-panel panel ${className}`}>
-      <div className="weather-panel-header">
+    <div
+      className={`weather-widget-panel panel ${className}`}
+      style={{
+        background: 'linear-gradient(135deg, #ffffff 0%, #f7faf5 100%)',
+        border: '1px solid #d5e3d2',
+        borderRadius: '12px',
+        padding: '18px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '8px',
+        }}
+      >
         <div>
-          <span className="badge badge-green weather-panel-badge">
+          <span
+            className="badge badge-green"
+            style={{ fontSize: '12px', padding: '2px 8px', marginBottom: '4px' }}
+          >
             {location.name || destinationName || 'Regional Forecast'}
           </span>
-          <h3 className="weather-panel-title">
-            <CloudSun size={18} className="weather-icon-primary" /> Destination Weather
+          <h3
+            style={{
+              fontSize: '16.5px',
+              fontWeight: 700,
+              color: '#1a3324',
+              margin: '3px 0 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <CloudSun size={18} color="#15803d" /> Destination Weather
           </h3>
           {datesLabel && (
-            <small className="weather-dates-label">
-              <Calendar size={13} className="weather-icon-primary" /> {datesLabel}
+            <small
+              style={{
+                color: '#5a685e',
+                fontSize: '12.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                marginTop: '3px',
+              }}
+            >
+              <Calendar size={14} /> {datesLabel}
             </small>
           )}
         </div>
 
         {source === 'fallback' && (
-          <span className="weather-source-badge">
+          <span style={{ fontSize: '12px', color: '#5a685e', fontStyle: 'italic' }}>
             Seasonal estimate
           </span>
         )}
       </div>
 
       {/* Current Conditions Bar */}
-      <div className="weather-current-bar">
-        <div className="weather-current-main">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '8px',
+          border: '1px solid #e1ebe0',
+          marginBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img
             src={`https://openweathermap.org/img/wn/${current.icon}@2x.png`}
             alt={current.description}
-            className="weather-current-icon"
+            style={{ width: '48px', height: '48px', margin: '-6px 0' }}
             onError={(e) => {
               ;(e.target as HTMLElement).style.display = 'none'
             }}
           />
           <div>
-            <span className="weather-current-temp weather-temp-number">
+            <span style={{ fontSize: '26px', fontWeight: 800, color: '#163824', lineHeight: 1 }}>
               {Math.round(current.temp)}°C
             </span>
-            <p className="weather-current-desc">
+            <p style={{ margin: '2px 0 0', fontSize: '13.5px', color: '#334438', fontWeight: 500 }}>
               {current.description}
             </p>
           </div>
         </div>
 
-        <div className="weather-current-metrics">
-          <div className="weather-metric-item">
-            <Thermometer size={14} className="weather-icon-primary" />
-            <span>Feels: <strong className="weather-temp-number">{Math.round(current.feelsLike)}°C</strong></span>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#4e5e52' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Thermometer size={15} color="#059669" />
+            <span>Feels: <strong>{Math.round(current.feelsLike)}°C</strong></span>
           </div>
-          <div className="weather-metric-item">
-            <Droplets size={14} className="weather-icon-primary" />
-            <span>Humidity: <strong className="weather-temp-number">{current.humidity}%</strong></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Droplets size={15} color="#0284c7" />
+            <span>Humidity: <strong>{current.humidity}%</strong></span>
           </div>
-          <div className="weather-metric-item">
-            <Wind size={14} className="weather-icon-primary" />
-            <span>Wind: <strong className="weather-temp-number">{current.windSpeed} m/s</strong></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Wind size={15} color="#64748b" />
+            <span>Wind: <strong>{current.windSpeed} m/s</strong></span>
           </div>
         </div>
       </div>
 
       {/* 5-Day Forecast Grid */}
       {forecast.length > 0 && (
-        <div className="weather-forecast-section">
-          <p className="weather-forecast-title">
+        <div>
+          <p
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              color: '#4e5e52',
+              margin: '0 0 8px',
+              letterSpacing: '0.5px',
+            }}
+          >
             5-Day Outlook
           </p>
           <div
-            className="weather-forecast-grid"
             style={{
+              display: 'grid',
               gridTemplateColumns: `repeat(${Math.min(forecast.length, 5)}, 1fr)`,
+              gap: '8px',
+              overflowX: 'auto',
             }}
           >
             {forecast.map((day) => (
-              <div key={day.date} className="weather-forecast-day-card">
-                <strong className="weather-forecast-day-name">
+              <div
+                key={day.date}
+                style={{
+                  background: 'white',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #e5ede3',
+                }}
+              >
+                <strong style={{ fontSize: '12.5px', display: 'block', color: '#1f3d2b' }}>
                   {day.day}
                 </strong>
-                <small className="weather-forecast-date">
+                <small style={{ fontSize: '12px', color: '#5a685e' }}>
                   {day.date.slice(5)}
                 </small>
-                <div className="weather-forecast-icon-wrap">
+                <div style={{ margin: '2px 0' }}>
                   <img
                     src={`https://openweathermap.org/img/wn/${day.icon}.png`}
                     alt={day.description}
-                    className="weather-forecast-img"
+                    style={{ width: '32px', height: '32px', margin: '0 auto', display: 'block' }}
                     onError={(e) => {
                       ;(e.target as HTMLElement).style.display = 'none'
                     }}
                   />
                 </div>
-                <div className="weather-forecast-temps">
-                  <strong className="weather-temp-number">{Math.round(day.tempMax)}°</strong>{' '}
-                  <span className="weather-forecast-temp-min weather-temp-number">{Math.round(day.tempMin)}°</span>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a3324' }}>
+                  {Math.round(day.tempMax)}° <span style={{ color: '#5a685e', fontWeight: 400 }}>{Math.round(day.tempMin)}°</span>
                 </div>
-                <small className="weather-forecast-desc" title={day.description}>
+                <small
+                  style={{
+                    fontSize: '11.5px',
+                    color: '#5a685e',
+                    display: 'block',
+                    marginTop: '2px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                  title={day.description}
+                >
                   {day.description}
                 </small>
               </div>

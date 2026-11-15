@@ -10,7 +10,7 @@ export interface RoleFrameProps {
 export function RoleFrame({ role, children }: RoleFrameProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const isPlanner = role === 'planner'
   const links = isPlanner
     ? [
@@ -31,38 +31,43 @@ export function RoleFrame({ role, children }: RoleFrameProps) {
         ['Reports', '/admin/reports'],
       ]
 
+  const isActive = (path: string) => {
+    if (path === '/planner/dashboard' || path === '/admin/dashboard') {
+      return location.pathname === path
+    }
+    return location.pathname.startsWith(path)
+  }
+
   return (
     <div className="route-shell">
-      {mobileMenuOpen && (
-        <div className="sidebar-backdrop" onClick={() => setMobileMenuOpen(false)} />
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
-      <aside className={`sidebar route-sidebar role-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="brand" onClick={() => { setMobileMenuOpen(false); navigate('/') }}>
+
+      <aside className={`sidebar route-sidebar role-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="brand" onClick={() => { setSidebarOpen(false); navigate('/') }} style={{ cursor: 'pointer' }}>
           <span className="brand-mark">p</span>
           <span>porikroma</span>
         </div>
         <div className="role-badge">{isPlanner ? 'TOUR PLANNER' : 'ADMIN'} workspace</div>
 
         <nav className="primary-nav">
-          {links.map(([label, path]) => {
-            const isActive = location.pathname === path || (path !== '/admin/dashboard' && path !== '/planner/dashboard' && location.pathname.startsWith(path))
-            return (
-              <Link
-                className={isActive ? 'nav-item active' : 'nav-item'}
-                to={path}
-                key={path}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {isPlanner ? <Compass size={17} /> : <Settings size={17} />}
-                <span>{label}</span>
-              </Link>
-            )
-          })}
+          {links.map(([label, path]) => (
+            <Link
+              className={isActive(path) ? 'nav-item active' : 'nav-item'}
+              to={path}
+              key={path}
+              onClick={() => setSidebarOpen(false)}
+            >
+              {isPlanner ? <Compass size={18} /> : <Settings size={18} />}
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
 
         <div className="sidebar-bottom">
-          <button className="nav-item" onClick={() => { setMobileMenuOpen(false); navigate('/dashboard') }}>
-            <ArrowUpRight size={17} />
+          <button className="nav-item" onClick={() => { setSidebarOpen(false); navigate('/dashboard') }}>
+            <ArrowUpRight size={18} />
             <span>Traveler view</span>
           </button>
         </div>
@@ -72,16 +77,16 @@ export function RoleFrame({ role, children }: RoleFrameProps) {
         <header className="topbar">
           <button
             className="mobile-menu"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle navigation"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           <div className="breadcrumbs">
             <span>{isPlanner ? 'Operations' : 'Administration'}</span>
             <ChevronRight size={14} />
-            <strong>Workspace</strong>
+            <strong>{links.find(([, p]) => isActive(p))?.[0] || 'Workspace'}</strong>
           </div>
         </header>
         {children}

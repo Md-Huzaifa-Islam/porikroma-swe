@@ -17,10 +17,16 @@ export function CalendarPage() {
     api<Trip[]>('/api/trips').then((trips) => {
       const tripEvents: Record<string, string[]> = {}
       trips.forEach((t) => {
-        const start = new Date(t.start_date)
-        if (!isNaN(start.getTime())) {
-          const key = `${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`
-          tripEvents[key] = [...(tripEvents[key] || []), `${t.name} (${t.status})`]
+        // Use date-only parsing to avoid timezone shifts, and mark every day
+        // of the trip so joined expeditions are visible throughout their dates.
+        const start = new Date(`${t.start_date.slice(0, 10)}T12:00:00`)
+        const end = new Date(`${(t.end_date || t.start_date).slice(0, 10)}T12:00:00`)
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+          for (const day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+            const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`
+            const event = `${t.name} (${t.status})`
+            tripEvents[key] = [...(tripEvents[key] || []), event]
+          }
         }
       })
       setEvents((prev) => ({ ...prev, ...tripEvents }))
@@ -93,13 +99,13 @@ export function CalendarPage() {
               <h2>{selected.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
               <p>{selectedEvents.length ? `${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''}` : 'Nothing scheduled'}</p>
             </div>
-            <CalendarDays size={20} />
+            <CalendarDays size={22} />
           </div>
           {selectedEvents.length ? (
             <div className="selected-events">
               {selectedEvents.map((event) => (
                 <div className="workspace-list-row" key={event}>
-                  <span className="list-marker"><CalendarDays size={13} /></span>
+                  <span className="list-marker"><CalendarDays size={15} /></span>
                   <strong>{event}</strong>
                 </div>
               ))}
@@ -111,7 +117,7 @@ export function CalendarPage() {
               <p>Use today to dream up where you’ll go next.</p>
             </div>
           )}
-          <button className="panel-link" onClick={addEvent}>Add personal note or stop <Plus size={15} /></button>
+          <button className="panel-link" onClick={addEvent}>Add personal note or stop <Plus size={16} /></button>
         </aside>
       </div>
     </div>

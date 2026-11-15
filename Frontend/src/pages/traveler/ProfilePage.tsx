@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Check, Star, Lock } from 'lucide-react'
-import { api, getUserPeerReviews } from '../../api'
+import { api, getUserPeerReviews, createPeerReview } from '../../api'
 import type { PeerReviewsResponse } from '../../types'
 import { PageHeader } from '../../components/common/PageHeader'
 
@@ -18,6 +18,7 @@ export function ProfilePage() {
     rating: number
     trips_count: number
     is_private?: boolean
+    admin_warnings?: { id: string; note?: string; created_at: string }[]
   } | null>(null)
   const [reviewsData, setReviewsData] = useState<PeerReviewsResponse | null>(null)
   const [loadingReviews, setLoadingReviews] = useState(true)
@@ -28,6 +29,12 @@ export function ProfilePage() {
   const [interests, setInterests] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [reviewableTrips, setReviewableTrips] = useState<{ id: string; name: string }[]>([])
+  const [reviewTripId, setReviewTripId] = useState('')
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewMessage, setReviewMessage] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   const isSelf = !userId
 
@@ -48,6 +55,13 @@ export function ProfilePage() {
       .then(setReviewsData)
       .catch(() => {})
       .finally(() => setLoadingReviews(false))
+    if (userId) {
+      api<{ id: string; name: string }[]>(`/api/users/${userId}/reviewable-trips`)
+        .then((trips) => { setReviewableTrips(trips); setReviewTripId(trips[0]?.id || '') })
+        .catch(() => setReviewableTrips([]))
+    } else {
+      setReviewableTrips([])
+    }
   }, [userId, isSelf])
 
   const save = async () => {
@@ -74,7 +88,37 @@ export function ProfilePage() {
     setInterests(interests.filter((t) => t !== tag))
   }
 
-  if (!profile) return <div className="page"><p className="muted">Loading profile…</p></div>
+  const submitProfileReview = async () => {
+    if (!profile || !reviewTripId) return
+    setSubmittingReview(true)
+    setReviewMessage('')
+    try {
+      await createPeerReview({ tripId: reviewTripId, revieweeId: profile.id, rating: reviewRating, comment: reviewComment })
+      setReviewableTrips((trips) => trips.filter((trip) => trip.id !== reviewTripId))
+      setReviewComment('')
+      setReviewMessage('Your review has been submitted.')
+      getUserPeerReviews(userId).then(setReviewsData).catch(() => undefined)
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : 'Could not submit your review.')
+    } finally {
+      setSubmittingReview(false)
+    }
+  }
+
+  if (!profile) {
+    return (
+      <div className="page">
+        {message ? (
+          <div className="empty-card" style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center' }}>
+            <p style={{ color: 'var(--red, #b91c1c)', fontWeight: 600, marginBottom: '12px' }}>{message}</p>
+            <button className="primary-btn" onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        ) : (
+          <p className="muted">Loading profile…</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="page">
@@ -91,7 +135,7 @@ export function ProfilePage() {
           </div>
           <div>
             <h2 style={{ margin: 0 }}>{profile.name}</h2>
-            <small style={{ color: '#778' }}>@{profile.username} · {profile.email}</small>
+            <small style={{ color: '#506155' }}>@{profile.username} · {profile.email}</small>
           </div>
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <strong>{profile.trips_count || 0} trips</strong>
@@ -109,9 +153,9 @@ export function ProfilePage() {
 
         {profile.is_private && !isSelf ? (
           <div style={{ padding: '30px', textAlign: 'center', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
-            <Lock size={32} style={{ margin: '0 auto 12px', display: 'block', color: '#94a3b8' }} />
+            <Lock size={32} style={{ margin: '0 auto 12px', display: 'block', color: '#64748b' }} />
             <h3 style={{ margin: '0 0 6px' }}>This profile is private</h3>
-            <p style={{ color: '#64748b', maxWidth: '400px', margin: '0 auto', fontSize: '13px' }}>
+            <p style={{ color: '#475569', maxWidth: '400px', margin: '0 auto', fontSize: '13px' }}>
               This traveler has set their profile to private. Detailed travel history and style are hidden.
             </p>
           </div>
@@ -140,7 +184,7 @@ export function ProfilePage() {
 
             <div className="modal-actions" style={{ marginTop: '20px' }}>
               <button className="primary-btn" disabled={saving} onClick={save}>
-                {saving ? 'Saving…' : 'Save profile'} <Check size={15} />
+                {saving ? 'Saving…' : 'Save profile'} <Check size={16} />
               </button>
             </div>
           </>
@@ -159,7 +203,43 @@ export function ProfilePage() {
         )}
       </section>
 
+      {isSelf && (profile.admin_warnings?.length ?? 0) > 0 && (
+        <section className="panel" style={{ maxWidth: '780px', marginTop: '20px', border: '1px solid #f3c76b', background: '#fffbeb' }}>
+          <h3 style={{ marginTop: 0, color: '#92400e' }}>Admin notices</h3>
+          {profile.admin_warnings?.map((warning) => (
+            <div key={warning.id} style={{ padding: '10px 0', borderTop: '1px solid #f3dfb0' }}>
+              <strong>Warning issued {new Date(warning.created_at).toLocaleDateString()}</strong>
+              {warning.note && <p style={{ margin: '6px 0 0' }}>{warning.note}</p>}
+            </div>
+          ))}
+        </section>
+      )}
+
       {/* Traveler Reviews Section */}
+      {!isSelf && !profile.is_private && reviewableTrips.length > 0 && (
+        <section className="panel" style={{ maxWidth: '780px', marginTop: '24px' }}>
+          <h3 style={{ marginTop: 0 }}>Rate and review {profile.name}</h3>
+          <p className="muted">Reviews are available for travelers you shared a completed trip with.</p>
+          <label>Completed trip
+            <select value={reviewTripId} onChange={(event) => setReviewTripId(event.target.value)}>
+              {reviewableTrips.map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
+            </select>
+          </label>
+          <label style={{ marginTop: '12px' }}>Rating
+            <select value={reviewRating} onChange={(event) => setReviewRating(Number(event.target.value))}>
+              {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} / 5 stars</option>)}
+            </select>
+          </label>
+          <label style={{ marginTop: '12px' }}>Review
+            <textarea rows={3} maxLength={2000} value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Share what it was like traveling together…" />
+          </label>
+          {reviewMessage && <p className="muted">{reviewMessage}</p>}
+          <button className="primary-btn" style={{ marginTop: '12px' }} disabled={!reviewTripId || submittingReview} onClick={submitProfileReview}>
+            {submittingReview ? 'Submitting…' : 'Submit review'} <Star size={16} />
+          </button>
+        </section>
+      )}
+
       <section className="panel" style={{ maxWidth: '780px', marginTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
@@ -172,7 +252,7 @@ export function ProfilePage() {
               <strong style={{ color: '#065f46', fontSize: '13px' }}>
                 {reviewsData.average_rating.toFixed(1)} / 5.0
               </strong>
-              <small style={{ color: '#047857', fontSize: '11px' }}>
+              <small style={{ color: '#047857', fontSize: '12px' }}>
                 ({reviewsData.count} {reviewsData.count === 1 ? 'review' : 'reviews'})
               </small>
             </div>
@@ -183,17 +263,17 @@ export function ProfilePage() {
           <p className="muted">Loading reviews…</p>
         ) : reviewsData?.privacy === 'PRIVATE' ? (
           <div style={{ padding: '24px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-            <Lock size={20} style={{ margin: '0 auto 8px', display: 'block', color: '#94a3b8' }} />
-            <strong style={{ display: 'block', fontSize: '13px', color: '#475569' }}>Reviews are private</strong>
-            <small style={{ color: '#94a3b8', fontSize: '12px' }}>
+            <Lock size={24} style={{ margin: '0 auto 8px', display: 'block', color: '#64748b' }} />
+            <strong style={{ display: 'block', fontSize: '13px', color: '#334155' }}>Reviews are private</strong>
+            <small style={{ color: '#506155', fontSize: '12px' }}>
               This traveler has set their reviews visibility to private.
             </small>
           </div>
         ) : !reviewsData || reviewsData.reviews.length === 0 ? (
           <div style={{ padding: '24px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-            <Star size={20} style={{ margin: '0 auto 8px', display: 'block', color: '#f59e0b' }} />
-            <strong style={{ display: 'block', fontSize: '13px', color: '#475569' }}>No reviews yet</strong>
-            <small style={{ color: '#94a3b8', fontSize: '12px' }}>
+            <Star size={24} style={{ margin: '0 auto 8px', display: 'block', color: '#f59e0b' }} />
+            <strong style={{ display: 'block', fontSize: '15px', color: '#1a2e22', fontWeight: 600 }}>No reviews yet</strong>
+            <small style={{ color: '#506155', fontSize: '13px' }}>
               Reviews will appear here after completing trips with fellow travelers.
             </small>
           </div>
@@ -210,14 +290,14 @@ export function ProfilePage() {
                   boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', border: 'none', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '12px' }}>
                       {rev.reviewer_name ? rev.reviewer_name[0].toUpperCase() : 'T'}
                     </div>
                     <div>
                       <strong style={{ fontSize: '13px', display: 'block' }}>{rev.reviewer_name}</strong>
-                      <small style={{ color: '#64748b', fontSize: '11px' }}>
+                      <small style={{ color: '#506155', fontSize: '12px' }}>
                         Expedition: {rev.trip_name || 'Group Trip'}
                       </small>
                     </div>
@@ -227,13 +307,13 @@ export function ProfilePage() {
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Star
                           key={s}
-                          size={14}
+                          size={15}
                           color="#f59e0b"
                           fill={s <= rev.rating ? '#f59e0b' : 'none'}
                         />
                       ))}
                     </div>
-                    <small style={{ color: '#94a3b8', fontSize: '10px', display: 'block', marginTop: '3px' }}>
+                    <small style={{ color: '#506155', fontSize: '12px', display: 'block', marginTop: '3px' }}>
                       {new Date(rev.created_at).toLocaleDateString()}
                     </small>
                   </div>

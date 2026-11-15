@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowUpRight, Plus, X, MapPin, Search, CheckCircle2, Circle } from 'lucide-react'
+import { ArrowUpRight, Plus, X, MapPin, Search, CheckCircle2, Circle, Trash2 } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import { api } from '../../api'
+import { useAuth } from '../../context/AuthContext'
 import type { Destination } from '../../types'
 import { PageHeader } from '../../components/common/PageHeader'
 import { createDistrictIcon } from '../../utils/leafletSetup'
@@ -28,12 +29,14 @@ function MapResizer() {
 
 export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [footprint, setFootprint] = useState<{ districtsVisited: number; visitedDistricts: string[]; travelDays: number; timeline: any[] } | null>(null)
   const [passport, setPassport] = useState<{ id: string; destination_name: string; district: string; division: string; visited_on?: string }[]>([])
   const [achievements, setAchievements] = useState<{ id: string; title: string; description: string; unlocked: boolean }[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([])
   const [showAddStamp, setShowAddStamp] = useState(false)
   const [stampDestId, setStampDestId] = useState('')
+  const [stampVisitedOn, setStampVisitedOn] = useState(new Date().toISOString().slice(0, 10))
   const [districtSearch, setDistrictSearch] = useState('')
   const [districtFilter, setDistrictFilter] = useState<'all' | 'visited' | 'unexplored'>('all')
 
@@ -81,9 +84,18 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
     if (!stampDestId) return
     await api('/api/me/passport', {
       method: 'POST',
-      body: JSON.stringify({ destinationId: stampDestId }),
+      body: JSON.stringify({ destinationId: stampDestId, visitedOn: stampVisitedOn }),
     })
     setShowAddStamp(false)
+    setStampDestId('')
+    setStampVisitedOn(new Date().toISOString().slice(0, 10))
+    api<typeof passport>('/api/me/passport').then(setPassport)
+    api<typeof footprint>('/api/me/footprint').then(setFootprint)
+  }
+
+  const deleteStamp = async (stampId: string) => {
+    if (!window.confirm('Remove this stamp from your passport?')) return
+    await api(`/api/me/passport/${stampId}`, { method: 'DELETE' })
     api<typeof passport>('/api/me/passport').then(setPassport)
     api<typeof footprint>('/api/me/footprint').then(setFootprint)
   }
@@ -95,6 +107,9 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
         title="Travel footprint"
         description="See the places, districts, and memories that have become part of your story."
       />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-12px', marginBottom: '16px' }}>
+        <button className="primary-btn" onClick={() => setShowAddStamp(true)}><Plus size={16} /> Add visited place</button>
+      </div>
 
       <div className="group-tabs">
         <Link to="/travel-footprint" className={`tab ${subpage === 'overview' ? 'active' : ''}`}>Overview</Link>
@@ -106,15 +121,17 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
       {subpage === 'overview' && (
         <>
           <section className="footprint-intro" style={{ marginTop: '20px' }}>
-            <div className="avatar footprint-avatar">R</div>
+            <div className="avatar footprint-avatar">
+              {user?.name ? user.name[0].toUpperCase() : 'T'}
+            </div>
             <div>
-              <h2>Rafi Ahmed</h2>
-              <p>The curious wanderer · Bangladesh explorer</p>
+              <h2>{user?.name || 'Traveler'}</h2>
+              <p>{user?.travel_style ? `${user.travel_style} · Bangladesh explorer` : 'Curious wanderer · Bangladesh explorer'}</p>
             </div>
             <div className="footprint-summary">
               <div><strong>{passport.length}</strong><span>stamps</span></div>
               <div><strong>{visitedCount}</strong><span>districts</span></div>
-              <div><strong>{footprint?.travelDays || 24}</strong><span>travel days</span></div>
+              <div><strong>{footprint?.travelDays ?? 0}</strong><span>travel days</span></div>
             </div>
           </section>
 
@@ -135,7 +152,13 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                 className="porikroma-map-container"
                 style={{
                   height: '380px',
+                  width: '100%',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  position: 'relative',
                   margin: '16px 0 12px',
+                  border: '1px solid #c8d7c4',
+                  zIndex: 0,
                 }}
               >
                 <MapContainer
@@ -161,24 +184,24 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                         <Popup>
                           <div style={{ minWidth: '160px', fontFamily: 'inherit' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                              <strong style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>{district.name}</strong>
+                              <strong style={{ fontSize: '14px', color: '#1f3d2b' }}>{district.name}</strong>
                               <span
                                 className={`badge ${isVisited ? 'badge-green' : 'badge-gray'}`}
-                                style={{ fontSize: '10px', padding: '2px 6px' }}
+                                style={{ fontSize: '12px', padding: '2px 8px' }}
                               >
                                 {isVisited ? 'Visited ✓' : 'Unexplored'}
                               </span>
                             </div>
-                            <small style={{ color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
+                            <small style={{ color: '#4e5e52', fontSize: '12.5px', display: 'block', marginTop: '2px' }}>
                               {district.division} Division
                             </small>
                             {isVisited ? (
-                              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <CheckCircle2 size={12} /> Stamped in your passport
+                              <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={14} /> Stamped in your passport
                               </div>
                             ) : (
-                              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Circle size={10} /> Plan a trip to unlock
+                              <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#5a685e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Circle size={13} /> Plan a trip to unlock
                               </div>
                             )}
                           </div>
@@ -190,16 +213,16 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
               </div>
 
               {/* Map Legend */}
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px', background: 'var(--color-surface-elevated)', border: 'var(--border-width) solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px', background: '#f4f7f2', borderRadius: '8px', fontSize: '13px', color: '#445547' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#283130', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#E8E8E8', fontSize: '8px', fontWeight: 'bold' }}>✓</span>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '8px', fontWeight: 'bold' }}>✓</span>
                   <strong>Visited Districts ({visitedCount})</strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#B8B8B8', border: '1.5px solid #283130', display: 'inline-block' }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#64748b', display: 'inline-block' }} />
                   <span>Unexplored ({64 - visitedCount})</span>
                 </div>
-                <div style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: '11px' }}>
+                <div style={{ marginLeft: 'auto', color: '#5a685e', fontSize: '12px' }}>
                   OpenStreetMap tiles
                 </div>
               </div>
@@ -208,33 +231,33 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative', flex: '1', minWidth: '180px' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#889988' }} />
+                    <Search size={16} style={{ position: 'absolute', left: '11px', top: '11px', color: '#6d7870' }} />
                     <input
                       placeholder="Search district or division…"
                       value={districtSearch}
                       onChange={(e) => setDistrictSearch(e.target.value)}
-                      style={{ paddingLeft: '30px', height: '32px', width: '100%', borderRadius: '6px', border: '1px solid #d0ded0', fontSize: '12px' }}
+                      style={{ paddingLeft: '34px', height: '38px', width: '100%', borderRadius: '8px', border: '1px solid var(--line)', fontSize: '14px' }}
                     />
                   </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       className={`tab ${districtFilter === 'all' ? 'active' : ''}`}
                       onClick={() => setDistrictFilter('all')}
-                      style={{ padding: '4px 10px', fontSize: '11px', height: '32px' }}
+                      style={{ padding: '0 12px', fontSize: '13px', height: '38px', borderRadius: '6px' }}
                     >
                       All (64)
                     </button>
                     <button
                       className={`tab ${districtFilter === 'visited' ? 'active' : ''}`}
                       onClick={() => setDistrictFilter('visited')}
-                      style={{ padding: '4px 10px', fontSize: '11px', height: '32px' }}
+                      style={{ padding: '0 12px', fontSize: '13px', height: '38px', borderRadius: '6px' }}
                     >
                       Visited ({visitedCount})
                     </button>
                     <button
                       className={`tab ${districtFilter === 'unexplored' ? 'active' : ''}`}
                       onClick={() => setDistrictFilter('unexplored')}
-                      style={{ padding: '4px 10px', fontSize: '11px', height: '32px' }}
+                      style={{ padding: '0 12px', fontSize: '13px', height: '38px', borderRadius: '6px' }}
                     >
                       Unexplored ({64 - visitedCount})
                     </button>
@@ -258,7 +281,7 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className={`district-dot ${isVisited ? 'visited' : ''}`} />
                           <strong>{district.name}</strong>
-                          <small style={{ color: '#889988', fontSize: '10px' }}>({district.division})</small>
+                          <small style={{ color: '#5a685e', fontSize: '12px' }}>({district.division})</small>
                         </span>
                         <small className={isVisited ? 'positive' : 'muted'} style={{ fontWeight: isVisited ? 600 : 400 }}>
                           {isVisited ? 'Visited ✓' : 'Unexplored'}
@@ -267,7 +290,7 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                     )
                   })}
                   {filteredDistricts.length === 0 && (
-                    <p className="muted" style={{ padding: '16px', textAlign: 'center', fontSize: '12px' }}>
+                    <p className="muted" style={{ padding: '16px', textAlign: 'center', fontSize: '13.5px', color: '#5a685e' }}>
                       No matching districts found.
                     </p>
                   )}
@@ -280,18 +303,18 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                 <h2>Explore deeper</h2>
                 <p className="muted">Your milestones and memory booklet.</p>
                 <div className="footprint-links">
-                  <Link to="/travel-footprint/passport">Open passport <ArrowUpRight size={14} /></Link>
-                  <Link to="/travel-footprint/achievements">See achievements <ArrowUpRight size={14} /></Link>
-                  <Link to="/travel-footprint/timeline">View timeline <ArrowUpRight size={14} /></Link>
+                  <Link to="/travel-footprint/passport">Open passport <ArrowUpRight size={15} /></Link>
+                  <Link to="/travel-footprint/achievements">See achievements <ArrowUpRight size={15} /></Link>
+                  <Link to="/travel-footprint/timeline">View timeline <ArrowUpRight size={15} /></Link>
                 </div>
               </div>
 
               <div className="panel" style={{ marginTop: '16px', background: '#f8faf7', border: '1px solid #e1ebe0' }}>
-                <h3 style={{ fontSize: '13px', color: '#2d4b3b', marginBottom: '6px' }}>District Milestones</h3>
-                <p style={{ fontSize: '11px', color: '#6d7770', lineHeight: 1.4 }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1a2e22', marginBottom: '6px' }}>District Milestones</h3>
+                <p style={{ fontSize: '13px', color: '#4e5e52', lineHeight: 1.5 }}>
                   Visit destinations across Bangladesh to earn official passport stamps and unlock regional badges.
                 </p>
-                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', color: '#334438' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>First Destination</span>
                     <strong>{visitedCount >= 1 ? '✓ Unlocked' : 'Pending'}</strong>
@@ -315,7 +338,7 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
         <div style={{ marginTop: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
             <h2>Official Travel Passport</h2>
-            <button className="primary-btn" onClick={() => setShowAddStamp(true)}><Plus size={15} /> Add stamp</button>
+            <button className="outline-btn" onClick={() => setShowAddStamp(true)}><Plus size={16} /> Add stamp</button>
           </div>
 
           <div className="passport">
@@ -328,28 +351,54 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
             <div className="passport-pages">
               <div>
                 <span className="eyebrow">Holder</span>
-                <h2>Rafi Ahmed</h2>
+                <h2>{user?.name || 'Traveler'}</h2>
                 <p>Verified explorer of Bangladesh</p>
               </div>
               <div className="stamp-grid">
                 {passport.map((p) => (
-                  <div className="stamp" key={p.id}>
+                  <div className="stamp" key={p.id} style={{ position: 'relative' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteStamp(p.id)
+                      }}
+                      title="Remove stamp"
+                      aria-label="Remove stamp"
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '6px',
+                        background: 'rgba(255,255,255,0.7)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '3px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#b91c1c',
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
                     <span>VISITED</span>
                     <strong>{p.destination_name}</strong>
                     <small>{p.district}</small>
                   </div>
                 ))}
                 {!passport.length && (
-                  <p style={{ color: '#889' }}>No stamps collected yet. Click Add stamp!</p>
+                  <p style={{ color: '#5a685e', fontSize: '14px', padding: '16px 0' }}>No stamps collected yet. Click Add stamp!</p>
                 )}
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {showAddStamp && (
+      {showAddStamp && (
             <div className="modal-backdrop" onClick={() => setShowAddStamp(false)}>
               <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <button className="modal-close" onClick={() => setShowAddStamp(false)}><X size={18} /></button>
+                <button className="modal-close" onClick={() => setShowAddStamp(false)} aria-label="Close add stamp modal"><X size={18} /></button>
                 <h2>Collect a new stamp</h2>
                 <label>Select destination
                   <select value={stampDestId} onChange={(e) => setStampDestId(e.target.value)}>
@@ -359,14 +408,15 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                     ))}
                   </select>
                 </label>
+                <label style={{ marginTop: '12px' }}>Date visited
+                  <input type="date" value={stampVisitedOn} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setStampVisitedOn(e.target.value)} />
+                </label>
                 <div className="modal-actions">
                   <button className="outline-btn" onClick={() => setShowAddStamp(false)}>Cancel</button>
                   <button className="primary-btn" onClick={addStamp}>Stamp passport</button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
       )}
 
       {subpage === 'achievements' && (
@@ -383,7 +433,7 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
               </div>
             ))}
             {!achievements.length && (
-              <p style={{ color: '#889' }}>Loading achievements…</p>
+              <p style={{ color: '#506155' }}>Loading achievements…</p>
             )}
           </div>
         </div>
@@ -399,7 +449,7 @@ export function FootprintPage({ subpage = 'overview' }: FootprintPageProps) {
                 <div>
                   <span className="eyebrow">{item.type} · {item.date}</span>
                   <h2>{item.title}</h2>
-                  <p><MapPin size={14} /> {item.place}</p>
+                  <p><MapPin size={15} /> {item.place}</p>
                   <small>Status: {item.status}</small>
                 </div>
               </article>
