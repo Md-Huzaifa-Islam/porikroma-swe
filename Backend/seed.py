@@ -39,8 +39,10 @@ async def seed(database_url: str = DATABASE_URL) -> None:
         # since the seed can run before the API has ever started.
         await apply_schema_and_migrations(conn)
 
-        # 1. Password hash for password123
-        password_hash = bcrypt.hashpw(b"password123", bcrypt.gensalt(10)).decode("utf-8")
+        # 1. Password hash for the demo accounts (DEMO_PASSWORD overrides the
+        #    local default so a public deployment does not use password123)
+        demo_password = os.getenv("DEMO_PASSWORD") or "password123"
+        password_hash = bcrypt.hashpw(demo_password.encode("utf-8"), bcrypt.gensalt(10)).decode("utf-8")
 
         # 2. Insert standard test users
         users_to_create = [

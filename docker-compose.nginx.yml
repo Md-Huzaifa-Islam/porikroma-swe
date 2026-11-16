@@ -1,0 +1,13 @@
+# VPS override without Caddy: the frontend's nginx owns ports 80/443 and
+# serves HTTPS itself with a Let's Encrypt certificate from the host.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d --build --wait
+
+services:
+  frontend:
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro

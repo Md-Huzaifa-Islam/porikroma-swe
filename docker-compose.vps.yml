@@ -1,0 +1,17 @@
+# VPS override: Caddy terminates HTTPS on 80/443 and forwards
+# porikroma.huzaifaswe.com to this stack's nginx (porikroma-web:80) over the
+# shared external `proxy` network. Nothing is published on the host.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml up -d --build --wait
+
+services:
+  frontend:
+    ports: !reset []
+    networks:
+      default: {}
+      proxy:
+        aliases: [porikroma-web]
+
+networks:
+  proxy:
+    external: true
